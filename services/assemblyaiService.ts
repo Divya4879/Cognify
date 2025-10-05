@@ -105,4 +105,4 @@ class AssemblyAIService {
   }
 }
 
-export const assemblyAIService = new AssemblyAIService();
+export const assemblyaiService = new AssemblyAIService();
