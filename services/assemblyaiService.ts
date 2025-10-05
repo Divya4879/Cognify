@@ -1,75 +1,76 @@
+const ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
+const ASSEMBLYAI_API_BASE = "https://api.assemblyai.com/v2";
+
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 class AssemblyAIService {
   private async uploadFile(audioDataUrl: string): Promise<string> {
+    if (!ASSEMBLYAI_API_KEY) {
+        throw new Error("AssemblyAI API key is not configured.");
+    }
     const audioBlob = await (await fetch(audioDataUrl)).blob();
-    const base64Data = await this.blobToBase64(audioBlob);
     
-    const response = await fetch('/.netlify/functions/assemblyai', {
+    const response = await fetch(`${ASSEMBLYAI_API_BASE}/upload`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'authorization': ASSEMBLYAI_API_KEY,
+        'Content-Type': audioBlob.type,
       },
-      body: JSON.stringify({
-        endpoint: '/upload',
-        file: base64Data,
-        contentType: audioBlob.type
-      })
+      body: audioBlob,
     });
 
     if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(`AssemblyAI upload failed: ${errorData.error || response.statusText}`);
     }
-
+    
     const data = await response.json();
     return data.upload_url;
   }
 
-  private async blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-
   private async createTranscript(audioUrl: string): Promise<string> {
-    const response = await fetch('/.netlify/functions/assemblyai', {
+    if (!ASSEMBLYAI_API_KEY) {
+        throw new Error("AssemblyAI API key is not configured.");
+    }
+    
+    const response = await fetch(`${ASSEMBLYAI_API_BASE}/transcripts`, {
       method: 'POST',
       headers: {
+        'authorization': ASSEMBLYAI_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        endpoint: '/transcripts',
         audio_url: audioUrl,
-        speaker_labels: true
-      })
+        speaker_labels: true,
+      }),
     });
 
     if (!response.ok) {
-      throw new Error(`Transcript creation failed: ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(`AssemblyAI transcript creation failed: ${errorData.error || response.statusText}`);
     }
-
+    
     const data = await response.json();
     return data.id;
   }
 
   private async getTranscript(transcriptId: string): Promise<any> {
-    const response = await fetch('/.netlify/functions/assemblyai', {
-      method: 'POST',
+    if (!ASSEMBLYAI_API_KEY) {
+        throw new Error("AssemblyAI API key is not configured.");
+    }
+    
+    const response = await fetch(`${ASSEMBLYAI_API_BASE}/transcripts/${transcriptId}`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        'authorization': ASSEMBLYAI_API_KEY,
       },
-      body: JSON.stringify({
-        endpoint: `/transcripts/${transcriptId}`
-      })
     });
 
     if (!response.ok) {
-      throw new Error(`Get transcript failed: ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(`AssemblyAI get transcript failed: ${errorData.error || response.statusText}`);
     }
-
+    
     return await response.json();
   }
 

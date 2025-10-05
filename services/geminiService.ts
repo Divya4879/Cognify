@@ -1,27 +1,26 @@
+import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { AITask, Flashcard, McqQuestion, ShortAnswerQuestion, LongAnswerQuestion, Quiz, Resource, SyllabusTopic, QuizFeedback } from '../types';
+
+if (!process.env.API_KEY) {
+  // This is a browser environment, so we'll rely on the user having the API key set up in their execution context.
+  // A more robust solution in a real-world app would involve a secure way to provide this key.
+  // For now, we allow the app to run and let the API calls fail gracefully if the key is missing.
+  console.warn("API_KEY environment variable not set. AI features will not work without it.");
+}
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const MAX_RETRIES = 3;
 const INITIAL_DELAY_MS = 1000;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function generateContentWithRetry(requestPayload: any): Promise<any> {
+async function generateContentWithRetry(requestPayload: any): Promise<GenerateContentResponse> {
     let retries = 0;
     while (retries < MAX_RETRIES) {
         try {
-            const response = await fetch('/.netlify/functions/gemini', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestPayload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
+            const response = await ai.models.generateContent(requestPayload);
+            return response;
         } catch (error: any) {
             // A simple string check for the 429 status code in the error message
             if (error.message && error.message.includes('429')) {
